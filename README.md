@@ -32,7 +32,7 @@ npm install
 LINE_CHANNEL_ACCESS_TOKEN=   # จาก LINE Developers Console > Messaging API
 LINE_CHANNEL_SECRET=         # จาก LINE Developers Console > Basic settings
 GEMINI_API_KEY=              # จาก Google AI Studio
-GEMINI_MODEL=gemini-2.5-flash
+GEMINI_MODEL=gemini-3.6-flash
 SHEET_CSV_URL=               # ไม่บังคับ — ลิงก์ Google Sheet ที่แชร์แบบ CSV สำหรับ FAQ
 ```
 
