@@ -6,7 +6,7 @@
   "outputDirectory": null,
   "functions": {
     "api/line-webhook.js": {
-      "maxDuration": 20
+      "maxDuration": 30
     }
   }
 }
