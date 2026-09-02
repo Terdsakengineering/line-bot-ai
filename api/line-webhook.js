@@ -25,7 +25,14 @@ async function handler(req, res) {
   const rawBody = await getRawBody(req);
   const signature = req.headers['x-line-signature'];
 
-  if (!signature || !validateSignature(rawBody, lineConfig.channelSecret, signature)) {
+  let signatureValid = false;
+  try {
+    signatureValid = Boolean(signature) && validateSignature(rawBody, lineConfig.channelSecret, signature);
+  } catch (err) {
+    console.error('Signature validation failed (check LINE_CHANNEL_SECRET):', err);
+  }
+
+  if (!signatureValid) {
     res.status(401).send('Invalid signature');
     return;
   }
