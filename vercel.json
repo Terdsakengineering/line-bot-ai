@@ -3,5 +3,10 @@
   "buildCommand": null,
   "devCommand": null,
   "installCommand": "npm install",
-  "outputDirectory": null
+  "outputDirectory": null,
+  "functions": {
+    "api/line-webhook.js": {
+      "maxDuration": 15
+    }
+  }
 }
