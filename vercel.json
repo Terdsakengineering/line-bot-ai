@@ -3,10 +3,5 @@
   "buildCommand": null,
   "devCommand": null,
   "installCommand": "npm install",
-  "outputDirectory": null,
-  "functions": {
-    "api/**/*.js": {
-      "runtime": "nodejs20.x"
-    }
-  }
+  "outputDirectory": null
 }

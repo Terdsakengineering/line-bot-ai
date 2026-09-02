@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(curl -s -o /dev/null -w \"HTTP Status: %{http_code}\\\\n\" https://line-bot-ai-3elp.vercel.app/)",
+      "Bash(curl -s https://line-bot-ai-3elp.vercel.app/)",
+      "Bash(curl -sI https://line-bot-ai-3elp.vercel.app/api/line-webhook)",
+      "Bash(npx --version)",
+      "Bash(npx vercel *)"
+    ]
+  }
+}

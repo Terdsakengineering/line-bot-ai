@@ -3,14 +3,6 @@ const { getRawBody } = require('../lib/getRawBody');
 const { getLineClient, lineConfig } = require('../lib/lineClient');
 const { askAssistant } = require('../lib/gemini');
 
-// Disable Vercel's automatic body parsing so we can verify the raw
-// request body against LINE's x-line-signature header.
-module.exports.config = {
-  api: {
-    bodyParser: false,
-  },
-};
-
 async function handleEvent(event) {
   if (event.type !== 'message' || event.message.type !== 'text') {
     return null;
@@ -24,7 +16,7 @@ async function handleEvent(event) {
   });
 }
 
-module.exports = async (req, res) => {
+async function handler(req, res) {
   if (req.method !== 'POST') {
     res.status(200).send('OK');
     return;
@@ -53,4 +45,14 @@ module.exports = async (req, res) => {
     console.error('Webhook handling failed:', err);
     res.status(500).json({ ok: false });
   }
+}
+
+// Disable Vercel's automatic body parsing so we can verify the raw
+// request body against LINE's x-line-signature header.
+handler.config = {
+  api: {
+    bodyParser: false,
+  },
 };
+
+module.exports = handler;
