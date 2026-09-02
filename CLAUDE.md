@@ -5,8 +5,8 @@
 LINE Official Account bot for เทอดศักดิ์กลการ จำกัด (โรงงาน CNC รับกัด กลึง เจียร
 และเจาะรู Gundrill) ตอบลูกค้า 24 ชม. โดยใช้ Gemini อ่าน FAQ จาก Google Sheet
 (fallback เป็นไฟล์ในโค้ดถ้าดึงไม่ได้) แล้วส่ง reply กลับ LINE คำถามที่ลูกค้า
-ต้องการคุยกับคน/ร้องเรียน จะถูกส่งต่อ (handoff) ไปกลุ่ม LINE ของแอดมินแทนการ
-ให้ AI ตอบ
+ต้องการคุยกับคน/ร้องเรียน จะถูกส่งต่อ (handoff) ไปหาแอดมิน (1:1 หรือกลุ่ม LINE)
+แทนการให้ AI ตอบ
 
 ## Stack — locked
 
@@ -25,7 +25,7 @@ LINE Official Account bot for เทอดศักดิ์กลการ จ�
   retry ซ้ำ
 - `lib/faqSource.js` — fetch + validate + cache CSV (TTL 60 วินาที)
 - `lib/gemini.js` — เรียก Gemini พร้อม timeout 8 วินาที และ truncation guard
-- `lib/handoff.js` — ตรวจ keyword ที่ควรส่งต่อคน + แจ้งกลุ่มแอดมิน
+- `lib/handoff.js` — ตรวจ keyword ที่ควรส่งต่อคน + แจ้งแอดมิน (1:1 หรือกลุ่ม)
 - `lib/promptTemplate.js` / `lib/buildPrompt.js` — system prompt (guardrails +
   reasoning protocol) ประกอบกับ FAQ
 - `lib/log.js` — structured JSON logging helper
@@ -38,7 +38,7 @@ LINE Official Account bot for เทอดศักดิ์กลการ จ�
 - `GEMINI_API_KEY`
 - `GEMINI_MODEL` (optional, default `gemini-3.6-flash`)
 - `SHEET_CSV_URL` (optional — ไม่ตั้งจะใช้ data/faq.csv)
-- `ADMIN_GROUP_ID` (Smart Handoff target — optional แต่แนะนำให้ตั้ง)
+- `ADMIN_TARGET_ID` (Smart Handoff target — LINE user ID หรือ group ID, optional แต่แนะนำให้ตั้ง)
 
 ชื่อตัวแปรต้องสะกดตรงตัวพิมพ์ใหญ่-เล็กทุกตัวอักษร (case-sensitive) —
 เคยเกิดปัญหา 500 เพราะตั้งชื่อผิด case มาแล้ว

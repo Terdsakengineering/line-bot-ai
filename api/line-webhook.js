@@ -20,9 +20,11 @@ async function replyWithRetry(replyToken, text, attempts) {
 }
 
 function logGroupSourceId(event) {
-  // Convenience for finding ADMIN_GROUP_ID: log the source id whenever the
-  // bot sees an event from a group/room so the owner can read it from
-  // Vercel logs instead of writing a separate script.
+  // Convenience for finding a group/room ADMIN_TARGET_ID later: log the
+  // source id whenever the bot sees an event from a group/room so the
+  // owner can read it from Vercel logs instead of writing a separate
+  // script. For a 1:1 admin chat, the userId already appears in the
+  // reply.sent / handoff.routed logs below.
   const source = event.source || {};
   if (source.type === 'group') {
     log.info('source.group_seen', { groupId: source.groupId });
