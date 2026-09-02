@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "description": "LINE OA chatbot for Terdsak Engineering (CNC machining) powered by Gemini",
-  "main": "api/webhook.js",
+  "main": "api/line-webhook.js",
   "type": "commonjs",
   "scripts": {
     "dev": "vercel dev"

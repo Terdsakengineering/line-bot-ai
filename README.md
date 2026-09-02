@@ -7,7 +7,7 @@ LINE OA chatbot สำหรับ **เทอดศักดิ์กลกา�
 ## โครงสร้างโปรเจกต์
 
 ```
-api/webhook.js        Vercel serverless function รับ webhook จาก LINE
+api/line-webhook.js    Vercel serverless function รับ webhook จาก LINE
 lib/lineClient.js      LINE Messaging API client
 lib/gemini.js          เรียก Gemini และ fallback เมื่อไม่มีคำตอบใน FAQ
 lib/buildPrompt.js      ประกอบ prompt จาก template + faq.csv
@@ -42,7 +42,7 @@ GEMINI_MODEL=gemini-2.5-flash
 npx vercel dev
 ```
 
-แล้วใช้ ngrok หรือเครื่องมือ tunnel อื่นเปิด endpoint `http://localhost:3000/api/webhook` ออกสู่อินเทอร์เน็ต เพื่อตั้งเป็น Webhook URL ใน LINE Developers Console
+แล้วใช้ ngrok หรือเครื่องมือ tunnel อื่นเปิด endpoint `http://localhost:3000/api/line-webhook` ออกสู่อินเทอร์เน็ต เพื่อตั้งเป็น Webhook URL ใน LINE Developers Console
 
 ## Deploy บน Vercel
 
@@ -50,7 +50,7 @@ npx vercel dev
 npx vercel deploy --prod
 ```
 
-จากนั้นนำ URL ที่ได้ (เช่น `https://your-project.vercel.app/api/webhook`) ไปตั้งเป็น Webhook URL ใน LINE Developers Console > Messaging API และเปิด "Use webhook"
+จากนั้นนำ URL ที่ได้ (เช่น `https://your-project.vercel.app/api/line-webhook`) ไปตั้งเป็น Webhook URL ใน LINE Developers Console > Messaging API และเปิด "Use webhook"
 
 ## แก้ไข FAQ
 
