@@ -10,10 +10,15 @@ LINE OA chatbot สำหรับ **เทอดศักดิ์กลกา�
 ## โครงสร้างโปรเจกต์
 
 ```
-api/line-webhook.js    Vercel serverless function รับ webhook จาก LINE (signature → handoff check → Gemini → reply พร้อม retry)
+api/line-webhook.js    Vercel serverless function รับ webhook จาก LINE (signature → staff trigger → quote flow → handoff/guardrail → Gemini → reply พร้อม retry)
 lib/lineClient.js      LINE Messaging API client
-lib/gemini.js          เรียก Gemini พร้อม timeout 8 วินาที + truncation guard, fallback เมื่อไม่มีคำตอบใน FAQ
+lib/gemini.js          เรียก Gemini พร้อม timeout + retry, fallback เมื่อไม่มีคำตอบใน FAQ
 lib/handoff.js         ตรวจ keyword ที่ควรส่งต่อคน + แจ้งเตือนแอดมิน (1:1 หรือกลุ่ม)
+lib/guardrail.js       เช็คคำต้องห้าม (ราคา/tolerance/กำหนดส่ง ฯลฯ) ก่อนเรียก Gemini เสมอ
+lib/quoteFlow.js       state machine ของ flow ขอใบเสนอราคา (step 0-7)
+lib/sessionState.js    อ่าน/เขียนสถานะ quote flow ต่อ userId ลง Google Sheet (TSE_Session_State)
+lib/quoteRequests.js   บันทึกใบขอเสนอราคาที่ยืนยันแล้วลง Google Sheet (TSE_Quote_Requests)
+lib/sheetsClient.js    เชื่อมต่อ Google Sheets API ด้วย Service Account (auth ใช้ร่วมกันทั้ง session/quote)
 lib/buildPrompt.js      ประกอบ prompt จาก template + FAQ
 lib/faqSource.js        โหลด FAQ CSV จาก SHEET_CSV_URL (cache 60 วินาที) หรือ fallback ไป data/faq.csv
 lib/promptTemplate.js   system prompt template (role/guardrails/reasoning_protocol/output_format)
@@ -41,6 +46,10 @@ GEMINI_API_KEY=              # จาก Google AI Studio
 GEMINI_MODEL=gemini-3.6-flash
 SHEET_CSV_URL=               # ไม่บังคับ — ลิงก์ Google Sheet ที่แชร์แบบ CSV สำหรับ FAQ
 ADMIN_TARGET_ID=             # ไม่บังคับแต่แนะนำ — LINE user ID (1:1) หรือ group ID สำหรับรับแจ้งเตือน Smart Handoff
+GOOGLE_SERVICE_ACCOUNT_EMAIL=        # จำเป็นสำหรับระบบขอใบเสนอราคา
+GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY=  # จำเป็นสำหรับระบบขอใบเสนอราคา
+SHEET_ID_QUOTE_REQUESTS=1QwGekDNcxH_uOKMOtEnIwaC6wnw32Sf-ByRsJ1iQi5M
+SHEET_ID_SESSION_STATE=1lq67oXwEE-WS_QFPO1_v8mfMlmvYGK0v8F5suibKH-o
 ```
 
 เมื่อ deploy บน Vercel ให้ตั้งค่าตัวแปรเดียวกันนี้ใน Project Settings > Environment Variables — **ชื่อตัวแปรต้องสะกดตรงตัวพิมพ์ใหญ่-เล็กทุกตัวอักษร** (case-sensitive)
@@ -93,3 +102,23 @@ npx vercel deploy --prod
 ถ้ายังไม่ได้ตั้ง `ADMIN_TARGET_ID` บอทยังคงตอบลูกค้าได้ปกติ แต่จะไม่มีข้อความแจ้งเตือนไปหาแอดมิน (มี log เตือนไว้ใน Vercel logs)
 
 เพิ่ม/แก้คำ trigger ได้ที่ `HANDOFF_TRIGGERS` ใน `lib/handoff.js` ตามคำที่ลูกค้าใช้จริง
+
+## ระบบขอใบเสนอราคา (quote flow)
+
+ลูกค้าพิมพ์ **"ส่งแบบขอใบเสนอราคา"** (หรือกด Rich Menu ปุ่มนี้ถ้าตั้งไว้) จะเริ่ม flow ถามทีละขั้นตอน (ไฟล์แบบงาน → วัสดุ → กระบวนการ → จำนวน/กำหนดส่ง → ข้อมูลติดต่อ → สรุปให้ยืนยัน) แล้วบันทึกลง Google Sheet `TSE_Quote_Requests` พร้อมแจ้งเตือนแอดมิน ทุกขั้นตอนมีปุ่ม **"คุยกับเจ้าหน้าที่"** ให้กดข้ามไปหาคนได้ทันทีถ้าลูกค้าไม่แน่ใจหรือต้องการยกเลิก
+
+สถานะระหว่างทำ flow (session) เก็บไว้ใน Google Sheet `TSE_Session_State` (คีย์ด้วย LINE userId) เพื่อให้ function แบบ serverless (ไม่มี memory ค้างข้ามคำขอ) จำได้ว่าลูกค้าอยู่ขั้นตอนไหน
+
+**ต้องตั้งค่าก่อนใช้งานได้:**
+
+1. สร้าง Google Service Account ใน Google Cloud Console (ต้อง Enable Google Sheets API ด้วย)
+2. สร้าง Key แบบ JSON ให้ service account นั้น เก็บ `client_email` และ `private_key` จากไฟล์ที่ได้
+3. แชร์สิทธิ์ **Editor** ของ Google Sheet `TSE_Quote_Requests` และ `TSE_Session_State` ให้กับอีเมล service account (`client_email`)
+4. ตั้งค่า `GOOGLE_SERVICE_ACCOUNT_EMAIL` และ `GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY` บน Vercel — ค่า private key มีขึ้นบรรทัดใหม่ (`\n`) ให้ paste ทั้งก้อนไปตรงๆ ได้เลย โค้ดจะแปลงให้เอง
+5. หัวคอลัมน์ที่ต้องมีในแต่ละชีท (แถวแรก, สร้างเองถ้ายังไม่มี):
+   - `TSE_Quote_Requests`: `Timestamp, UserId, CustomerName, ContactPhone, Material, Processes, Quantity, DueDate, DrawingFileURL, Notes, Status`
+   - `TSE_Session_State`: `UserId, State, UpdatedAt`
+
+ถ้าชื่อแท็บ (sheet tab) ในไฟล์ไม่ใช่ `Sheet1` ให้ตั้ง `SHEET_TAB_QUOTE_REQUESTS` / `SHEET_TAB_SESSION_STATE` ให้ตรงชื่อจริงด้วย
+
+**คำต้องห้าม (guardrail):** คำถามที่มีคำในลิสต์ `BLOCKED_KEYWORDS` ของ `lib/guardrail.js` (เช่น ราคา, tolerance, กำหนดส่ง) จะไม่ถูกส่งให้ Gemini ตอบเลย บอทจะตอบให้กดคุยกับเจ้าหน้าที่แทนทันที เพื่อกันการแต่งราคา/สเปกที่ต้องให้คนตรวจสอบก่อน

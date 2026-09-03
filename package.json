@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@google/genai": "^0.15.0",
-    "@line/bot-sdk": "^9.9.0"
+    "@line/bot-sdk": "^9.9.0",
+    "googleapis": "^178.0.0"
   }
 }

@@ -6,7 +6,8 @@ LINE Official Account bot for เทอดศักดิ์กลการ จ�
 และเจาะรู Gundrill) ตอบลูกค้า 24 ชม. โดยใช้ Gemini อ่าน FAQ จาก Google Sheet
 (fallback เป็นไฟล์ในโค้ดถ้าดึงไม่ได้) แล้วส่ง reply กลับ LINE คำถามที่ลูกค้า
 ต้องการคุยกับคน/ร้องเรียน จะถูกส่งต่อ (handoff) ไปหาแอดมิน (1:1 หรือกลุ่ม LINE)
-แทนการให้ AI ตอบ
+แทนการให้ AI ตอบ นอกจากนี้มีระบบขอใบเสนอราคาแบบ step-by-step (quote flow) ที่
+เก็บสถานะและบันทึกผลลง Google Sheets ผ่าน Service Account
 
 ## Stack — locked
 
@@ -20,12 +21,21 @@ LINE Official Account bot for เทอดศักดิ์กลการ จ�
 
 ## Repo conventions
 
-- `api/line-webhook.js` — POST handler เดียว (verify signature → handoff check
-  → Gemini → reply พร้อม retry) คืน 200 เสมอหลัง signature ผ่าน เพื่อกัน LINE
-  retry ซ้ำ
+- `api/line-webhook.js` — POST handler เดียว (verify signature → staff trigger
+  → quote flow → handoff/guardrail → Gemini → reply พร้อม retry) คืน 200 เสมอ
+  หลัง signature ผ่าน เพื่อกัน LINE retry ซ้ำ
 - `lib/faqSource.js` — fetch + validate + cache CSV (TTL 60 วินาที)
-- `lib/gemini.js` — เรียก Gemini พร้อม timeout 8 วินาที และ truncation guard
+- `lib/gemini.js` — เรียก Gemini พร้อม timeout + retry (ยกเว้น 429 quota
+  exceeded ไม่ retry เพราะเสียโควต้าเปล่า) และ truncation guard
 - `lib/handoff.js` — ตรวจ keyword ที่ควรส่งต่อคน + แจ้งแอดมิน (1:1 หรือกลุ่ม)
+  `notifyAdmin` ต้อง catch error ของตัวเองเสมอ ห้ามปล่อยให้ throw ออกไป เพราะ
+  จะทำให้ caller (handoff/quoteFlow) ข้าม step เคลียร์ session หรือ reply
+  ลูกค้าไปด้วย (เคยเป็นบั๊กมาแล้ว)
+- `lib/guardrail.js` — เช็คคำต้องห้าม (ราคา/tolerance/กำหนดส่ง) ก่อนเรียก
+  Gemini เสมอ ต้องเช็คนี้ก่อน ไม่ใช่ฝากไว้ใน prompt เพราะ prompt อาจหลุดได้
+- `lib/quoteFlow.js` — state machine ของ flow ขอใบเสนอราคา (step 0-7)
+- `lib/sessionState.js` / `lib/quoteRequests.js` / `lib/sheetsClient.js` —
+  อ่าน/เขียน Google Sheets ผ่าน Service Account (JWT auth)
 - `lib/promptTemplate.js` / `lib/buildPrompt.js` — system prompt (guardrails +
   reasoning protocol) ประกอบกับ FAQ
 - `lib/log.js` — structured JSON logging helper
@@ -39,6 +49,9 @@ LINE Official Account bot for เทอดศักดิ์กลการ จ�
 - `GEMINI_MODEL` (optional, default `gemini-3.6-flash`)
 - `SHEET_CSV_URL` (optional — ไม่ตั้งจะใช้ data/faq.csv)
 - `ADMIN_TARGET_ID` (Smart Handoff target — LINE user ID หรือ group ID, optional แต่แนะนำให้ตั้ง)
+- `GOOGLE_SERVICE_ACCOUNT_EMAIL` / `GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY` (จำเป็นสำหรับ quote flow)
+- `SHEET_ID_QUOTE_REQUESTS` / `SHEET_ID_SESSION_STATE` (จำเป็นสำหรับ quote flow)
+- `SHEET_TAB_QUOTE_REQUESTS` / `SHEET_TAB_SESSION_STATE` (optional, default `Sheet1`)
 
 ชื่อตัวแปรต้องสะกดตรงตัวพิมพ์ใหญ่-เล็กทุกตัวอักษร (case-sensitive) —
 เคยเกิดปัญหา 500 เพราะตั้งชื่อผิด case มาแล้ว
@@ -53,3 +66,13 @@ LINE Official Account bot for เทอดศักดิ์กลการ จ�
 - ห้าม log เนื้อหาข้อความลูกค้าแบบเต็ม — log เฉพาะ metadata (latency, length,
   userId) ยกเว้นข้อความที่ส่งต่อให้แอดมินจริงตอน handoff ซึ่งจำเป็นต้องเห็น
   เนื้อหาเต็มเพื่อช่วยลูกค้า
+
+## หมายเหตุ
+
+- ลิสต์ `BLOCKED_KEYWORDS` ใน `lib/guardrail.js` มาจากการเดาความหมายจากไฟล์
+  spec ที่ encoding เพี้ยน (ตัวอักษรไทยอ่านไม่ออกตรงๆ) เจ้าของธุรกิจอนุมัติให้
+  ใช้ไปก่อนได้ แต่ควรตรวจทานอีกครั้งและปรับตามคำที่ลูกค้าใช้จริงเมื่อมีข้อมูล
+- ชื่อแท็บ (sheet tab) ของ `TSE_Quote_Requests` / `TSE_Session_State` สมมติ
+  เป็น `Sheet1` ไว้ก่อน ถ้าไม่ตรงต้องตั้ง `SHEET_TAB_QUOTE_REQUESTS` /
+  `SHEET_TAB_SESSION_STATE` ให้ตรงชื่อจริง ไม่งั้น sessionState/quoteRequests
+  จะอ่าน/เขียนผิดชีท
