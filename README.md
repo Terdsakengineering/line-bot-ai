@@ -115,10 +115,25 @@ npx vercel deploy --prod
 2. สร้าง Key แบบ JSON ให้ service account นั้น เก็บ `client_email` และ `private_key` จากไฟล์ที่ได้
 3. แชร์สิทธิ์ **Editor** ของ Google Sheet `TSE_Quote_Requests` และ `TSE_Session_State` ให้กับอีเมล service account (`client_email`)
 4. ตั้งค่า `GOOGLE_SERVICE_ACCOUNT_EMAIL` และ `GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY` บน Vercel — ค่า private key มีขึ้นบรรทัดใหม่ (`\n`) ให้ paste ทั้งก้อนไปตรงๆ ได้เลย โค้ดจะแปลงให้เอง
-5. หัวคอลัมน์ที่ต้องมีในแต่ละชีท (แถวแรก, สร้างเองถ้ายังไม่มี):
-   - `TSE_Quote_Requests`: `Timestamp, UserId, CustomerName, ContactPhone, Material, Processes, Quantity, DueDate, DrawingFileURL, Notes, Status`
-   - `TSE_Session_State`: `UserId, State, UpdatedAt`
+5. หัวคอลัมน์ที่ต้องมีในแต่ละชีท (แถวแรก):
+   - `TSE_Quote_Requests`: `Timestamp, LineUserId, CustomerName, ContactPhone, Material, Processes, Quantity, DueDate, DrawingFileURL, Notes, Status`
+   - `TSE_Session_State`: `LineUserId, CurrentStep, TempDataJSON, LastUpdated`
 
 ถ้าชื่อแท็บ (sheet tab) ในไฟล์ไม่ใช่ `Sheet1` ให้ตั้ง `SHEET_TAB_QUOTE_REQUESTS` / `SHEET_TAB_SESSION_STATE` ให้ตรงชื่อจริงด้วย
 
 **คำต้องห้าม (guardrail):** คำถามที่มีคำในลิสต์ `BLOCKED_KEYWORDS` ของ `lib/guardrail.js` (เช่น ราคา, tolerance, กำหนดส่ง) จะไม่ถูกส่งให้ Gemini ตอบเลย บอทจะตอบให้กดคุยกับเจ้าหน้าที่แทนทันที เพื่อกันการแต่งราคา/สเปกที่ต้องให้คนตรวจสอบก่อน
+
+### เลือกกระบวนการหลายอันพร้อมกัน (LIFF)
+
+LINE Quick Reply กดได้ทีละปุ่มเท่านั้น ไม่มี checkbox ในตัว ขั้นตอนที่ 3 (เลือกกระบวนการ) จึงใช้หน้าเว็บ LIFF (`public/liff/processes.html`) เป็น checkbox จริงแทน ถ้าไม่ได้ตั้งค่า จะ fallback เป็นแบบแตะทีละอันแล้วกด "เสร็จแล้ว" แทนอัตโนมัติ
+
+**วิธีเปิดใช้งาน:**
+
+1. ไปที่ https://developers.line.biz/console/ → เลือก Provider/Channel เดียวกับ Messaging API
+2. ไปที่แท็บ **LIFF** → **Add**
+3. ตั้งชื่อ เช่น "เลือกกระบวนการ", Size เลือก **Tall** หรือ **Full**
+4. Endpoint URL ใส่ `https://line-bot-ai-3elp.vercel.app/liff/processes.html`
+5. Scope ใช้ค่า default ได้เลย (ไม่ต้องเพิ่ม permission พิเศษ เพราะเปิดจากในแชทอยู่แล้ว)
+6. กด Add จะได้ **LIFF ID** (หน้าตาประมาณ `1234567890-AbCdEfGh`)
+7. เปิดไฟล์ `public/liff/processes.html` แก้บรรทัด `var LIFF_ID = 'LIFF_ID_PLACEHOLDER';` ให้เป็น LIFF ID จริง แล้ว commit + push
+8. ตั้งค่า env var `LIFF_PROCESSES_URL` บน Vercel เป็น `https://liff.line.me/<LIFF_ID>` (URL เต็มที่ LINE ให้มาตอนสร้าง LIFF app)

@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+<title>เลือกกระบวนการ</title>
+<style>
+  :root { color-scheme: light; }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans Thai", sans-serif;
+    background: #f5f5f5;
+    color: #222;
+    padding: 20px 16px 100px;
+  }
+  h1 { font-size: 18px; margin: 0 0 4px; }
+  p.hint { font-size: 13px; color: #666; margin: 0 0 20px; }
+  .option {
+    display: flex;
+    align-items: center;
+    background: #fff;
+    border: 1px solid #e0e0e0;
+    border-radius: 10px;
+    padding: 14px 16px;
+    margin-bottom: 10px;
+  }
+  .option input { width: 20px; height: 20px; margin-right: 12px; flex-shrink: 0; }
+  .option label { font-size: 16px; flex: 1; }
+  .footer {
+    position: fixed;
+    left: 0; right: 0; bottom: 0;
+    padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+    background: #fff;
+    border-top: 1px solid #e5e5e5;
+  }
+  button {
+    width: 100%;
+    padding: 14px;
+    font-size: 16px;
+    font-weight: 600;
+    border: none;
+    border-radius: 10px;
+    background: #06c755;
+    color: #fff;
+  }
+  button:disabled { background: #ccc; }
+  #status { font-size: 13px; color: #c0392b; margin-top: 8px; text-align: center; }
+</style>
+</head>
+<body>
+  <h1>เลือกกระบวนการที่ต้องการ</h1>
+  <p class="hint">เลือกได้มากกว่า 1 รายการ แล้วกดยืนยัน</p>
+
+  <div id="options"></div>
+
+  <div class="footer">
+    <button id="confirmBtn" disabled>ยืนยัน</button>
+    <div id="status"></div>
+  </div>
+
+  <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+  <script>
+    // Replace with your LIFF ID from LINE Developers Console > LIFF tab.
+    var LIFF_ID = 'LIFF_ID_PLACEHOLDER';
+
+    var PROCESS_OPTIONS = [
+      'กัด (Milling)',
+      'กลึง (Turning)',
+      'เจียร (Grinding)',
+      'เจาะ Gun Drill',
+    ];
+
+    var optionsEl = document.getElementById('options');
+    var confirmBtn = document.getElementById('confirmBtn');
+    var statusEl = document.getElementById('status');
+
+    PROCESS_OPTIONS.forEach(function (label, i) {
+      var wrapper = document.createElement('div');
+      wrapper.className = 'option';
+      wrapper.innerHTML =
+        '<input type="checkbox" id="opt' + i + '" value="' + label + '">' +
+        '<label for="opt' + i + '">' + label + '</label>';
+      optionsEl.appendChild(wrapper);
+    });
+
+    function getSelected() {
+      return PROCESS_OPTIONS.filter(function (_, i) {
+        return document.getElementById('opt' + i).checked;
+      });
+    }
+
+    optionsEl.addEventListener('change', function () {
+      confirmBtn.disabled = getSelected().length === 0;
+    });
+
+    confirmBtn.addEventListener('click', function () {
+      var selected = getSelected();
+      if (!selected.length) return;
+
+      confirmBtn.disabled = true;
+      liff
+        .sendMessages([{ type: 'text', text: selected.join(', ') }])
+        .then(function () {
+          liff.closeWindow();
+        })
+        .catch(function (err) {
+          statusEl.textContent = 'ส่งข้อมูลไม่สำเร็จ กรุณาลองใหม่ (' + err.message + ')';
+          confirmBtn.disabled = false;
+        });
+    });
+
+    liff
+      .init({ liffId: LIFF_ID })
+      .catch(function (err) {
+        statusEl.textContent = 'เปิดหน้านี้ไม่สำเร็จ กรุณากลับไปแชทแล้วลองใหม่';
+      });
+  </script>
+</body>
+</html>
