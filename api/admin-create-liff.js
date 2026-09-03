@@ -3,7 +3,7 @@
 // right after use — it's not meant to stay in the deployed app.
 
 async function handler(req, res) {
-  if (req.query.token !== process.env.LINE_CHANNEL_SECRET) {
+  if (req.query.token !== process.env.TEMP_ADMIN_TOKEN) {
     res.status(401).json({ error: 'unauthorized' });
     return;
   }
